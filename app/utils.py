@@ -1,9 +1,11 @@
 import ast
+import concurrent.futures
 import contextlib
 import glob
 import os
 import shutil
 import subprocess
+import sys
 from collections.abc import Callable
 from functools import wraps
 from os import PathLike
@@ -23,11 +25,15 @@ def cd(newdir):
     :return: None
     """
     prevdir = os.getcwd()
+    result = newdir.split('SWE-bench', 1)[1]  # Keep everything after "SWE-bench"
+    result = 'SWE-bench' + result
+    newdir = "D:\\nau\\Master\\Term\\Winter-2025\\" + result
     os.chdir(os.path.expanduser(newdir))
     try:
         yield
     finally:
         os.chdir(prevdir)
+        print(f"Reverted to: {os.getcwd()}")  # Debugging
 
 
 def run_command(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
@@ -336,16 +342,30 @@ def parse_function_invocation(
     return function_name, arguments
 
 
-def catch_all_and_log(func: Callable) -> Callable:
+def log_exception(e):
+    print(f"Exception logged: {e}")
+
+def timeout_wrapper(func, timeout, *args, **kwargs):
+    """Runs a function with a timeout using threading."""
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(func, *args, **kwargs)
+        try:
+            return future.result(timeout=timeout)  # Apply timeout
+        except concurrent.futures.TimeoutError:
+            raise TimeoutError("Function execution exceeded time limit.")
+
+def catch_all_and_log(func: Callable, timeout: int = 5) -> Callable:
     @wraps(func)
     def wrapper(*args, **kwargs):
         try:
-            return func(*args, **kwargs)
+            if sys.platform == "win32":  # Use threading-based timeout on Windows
+                return timeout_wrapper(func, timeout, *args, **kwargs)
+            else:
+                return func(*args, **kwargs)
         except Exception as e:
             log_exception(e)
             err = str(e)
-            # TODO: this string is there for legacy reasons
-            summary = "The tool returned error message."
+            summary = "The tool returned an error message."
             return err, summary, False
 
     return wrapper

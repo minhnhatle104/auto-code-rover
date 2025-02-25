@@ -39,7 +39,7 @@ reproduce_and_review: bool = False
 # timeout for test cmd execution, currently set to 5 min
 test_exec_timeout: int = 300
 
-models: list[str] = []
+models: list[str] = ["gpt-4o-2024-05-13"]
 
 backup_model = ["gpt-4o-2024-05-13"]
 

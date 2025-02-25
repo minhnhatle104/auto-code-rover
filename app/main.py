@@ -4,6 +4,7 @@ The main driver.
 
 import json
 import logging
+import os
 import platform
 import shutil
 from argparse import ArgumentParser
@@ -488,6 +489,8 @@ def run_raw_task(task: RawTask) -> bool:
         f"============= Running task {task_id} =============",
     )
 
+    register_all_models()
+
     run_ok = False
 
     try:
@@ -643,7 +646,14 @@ def dump_cost(
     }
     stats.update(model_stats)
 
-    with open(pjoin(task_output_dir, "cost.json"), "w") as f:
+    # Get the absolute path of the directory containing main.py
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Move two levels up to reach "auto-code-rover"
+    project_root = os.path.abspath(os.path.join(current_dir, ".."))
+    abs_task_output_dir = pjoin(project_root,task_output_dir)
+    cost_json_file = pjoin(abs_task_output_dir,"cost.json").replace("\\","/")
+    with open(cost_json_file, "w") as f:
         json.dump(stats, f, indent=4)
 
 
